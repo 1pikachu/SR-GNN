@@ -12,6 +12,7 @@ from utils import build_graph, Data, split_validation
 import pickle
 import argparse
 import datetime
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='sample', help='dataset name: diginetica/yoochoose1_4/yoochoose1_64/sample')
@@ -27,8 +28,8 @@ parser.add_argument('--nonhybrid', action='store_true', help='global preference'
 parser.add_argument('--lr_dc', type=float, default=0.1, help='learning rate decay rate')
 parser.add_argument('--lr_dc_step', type=int, default=3, help='the number of steps after which the learning rate decay')
 opt = parser.parse_args()
-train_data = pickle.load(open('../datasets/' + opt.dataset + '/train.txt', 'rb'))
-test_data = pickle.load(open('../datasets/' + opt.dataset + '/test.txt', 'rb'))
+train_data = pickle.load(open(opt.dataset + '/train.txt', 'rb'))
+test_data = pickle.load(open(opt.dataset + '/test.txt', 'rb'))
 # all_train_seq = pickle.load(open('../datasets/' + opt.dataset + '/all_train_seq.txt', 'rb'))
 if opt.dataset == 'diginetica':
     n_node = 43098
@@ -45,17 +46,22 @@ model = GGNN(hidden_size=opt.hiddenSize, out_size=opt.hiddenSize, batch_size=opt
 print(opt)
 best_result = [0, 0]
 best_epoch = [0, 0]
-for epoch in range(opt.epoch):
+
+total_time = 0.0
+for epoch in range(opt.epoch+1):
     print('epoch: ', epoch, '===========================================')
     slices = train_data.generate_batch(model.batch_size)
     fetches = [model.opt, model.loss_train, model.global_step]
     print('start training: ', datetime.datetime.now())
     loss_ = []
+    start_time = time.time()
     for i, j in zip(slices, np.arange(len(slices))):
         adj_in, adj_out, alias, item, mask, targets = train_data.get_slice(i)
         _, loss, _ = model.run(fetches, targets, item, adj_in, adj_out, alias,  mask)
         loss_.append(loss)
     loss = np.mean(loss_)
+    if epoch != 0:
+        total_time += time.time() - start_time
     slices = test_data.generate_batch(model.batch_size)
     print('start predicting: ', datetime.datetime.now())
     hit, mrr, test_loss_ = [], [],[]
@@ -81,3 +87,5 @@ for epoch in range(opt.epoch):
         best_epoch[1]=epoch
     print('train_loss:\t%.4f\ttest_loss:\t%4f\tRecall@20:\t%.4f\tMMR@20:\t%.4f\tEpoch:\t%d,\t%d'%
           (loss, test_loss, best_result[0], best_result[1], best_epoch[0], best_epoch[1]))
+
+print("training Throughput:", model.batch_size * len(slices) * opt.epoch / total_time)
