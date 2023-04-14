@@ -58,6 +58,7 @@ function generate_core {
         printf " ${OOB_EXEC_HEADER} \
 	    python main.py --dataset ../datasets/sample \
                 --epoch 10 --batchSize ${batch_size} \
+                --precision ${precision} --device ${device} \
                 ${addtion_options} \
         > ${log_file} 2>&1 &  \n" |tee -a ${excute_cmd_file}
     done

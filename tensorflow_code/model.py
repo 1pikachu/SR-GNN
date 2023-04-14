@@ -68,7 +68,7 @@ class Model(object):
 
 class GGNN(Model):
     def __init__(self,hidden_size=100, out_size=100, batch_size=300, n_node=None,
-                 lr=None, l2=None, step=1, decay=None, lr_dc=0.1, nonhybrid=False):
+                 lr=None, l2=None, step=1, decay=None, lr_dc=0.1, nonhybrid=False, precision=None, device=None):
         super(GGNN,self).__init__(hidden_size, out_size, batch_size, nonhybrid)
         self.embedding = tf.compat.v1.get_variable(shape=[n_node, hidden_size], name='embedding', dtype=tf.float32,
                                          initializer=tf.compat.v1.random_uniform_initializer(-self.stdv, self.stdv))
@@ -97,6 +97,11 @@ class GGNN(Model):
         gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.8)
         config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
         config.gpu_options.allow_growth = True
+        if precision == "float16" and device == "cuda":
+            from tensorflow.core.protobuf import rewriter_config_pb2
+            config.graph_options.rewrite_options.auto_mixed_precision_mkl = rewriter_config_pb2.RewriterConfig.ON
+            config.graph_options.rewrite_options.auto_mixed_precision = rewriter_config_pb2.RewriterConfig.ON
+            print("---- enable float16")
         self.sess = tf.compat.v1.Session(config=config)
         self.sess.run(tf.compat.v1.global_variables_initializer())
 

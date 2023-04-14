@@ -27,6 +27,9 @@ parser.add_argument('--step', type=int, default=1, help='gnn propogation steps')
 parser.add_argument('--nonhybrid', action='store_true', help='global preference')
 parser.add_argument('--lr_dc', type=float, default=0.1, help='learning rate decay rate')
 parser.add_argument('--lr_dc_step', type=int, default=3, help='the number of steps after which the learning rate decay')
+parser.add_argument('--tensorboard', action='store_true')
+parser.add_argument('--precision', default="float16", choices=["float16", "float32"])
+parser.add_argument('--device', default='cuda', choices=["cuda", "xpu"])
 opt = parser.parse_args()
 train_data = pickle.load(open(opt.dataset + '/train.txt', 'rb'))
 test_data = pickle.load(open(opt.dataset + '/test.txt', 'rb'))
@@ -42,7 +45,7 @@ train_data = Data(train_data, sub_graph=True, method=opt.method, shuffle=True)
 test_data = Data(test_data, sub_graph=True, method=opt.method, shuffle=False)
 model = GGNN(hidden_size=opt.hiddenSize, out_size=opt.hiddenSize, batch_size=opt.batchSize, n_node=n_node,
                  lr=opt.lr, l2=opt.l2,  step=opt.step, decay=opt.lr_dc_step * len(train_data.inputs) / opt.batchSize, lr_dc=opt.lr_dc,
-                 nonhybrid=opt.nonhybrid)
+                 nonhybrid=opt.nonhybrid, precision=opt.precision, device=opt.device)
 print(opt)
 best_result = [0, 0]
 best_epoch = [0, 0]
@@ -57,7 +60,15 @@ for epoch in range(opt.epoch+1):
     start_time = time.time()
     for i, j in zip(slices, np.arange(len(slices))):
         adj_in, adj_out, alias, item, mask, targets = train_data.get_slice(i)
+        if epoch == 1 and opt.tensorboard:
+            print("---- collect tensorboard")
+            options = tf.profiler.experimental.ProfilerOptions(host_tracer_level = 3, python_tracer_level = 1, device_tracer_level = 1)
+            tf.profiler.experimental.start('./tensorboard_data', options = options)
         _, loss, _ = model.run(fetches, targets, item, adj_in, adj_out, alias,  mask)
+        if epoch == 1 and opt.tensorboard:
+            tf.profiler.experimental.stop()
+            print("---- collect tensorboard end")
+            opt.tensorboard = False
         loss_.append(loss)
     loss = np.mean(loss_)
     if epoch != 0:
