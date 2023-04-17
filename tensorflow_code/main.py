@@ -28,7 +28,7 @@ parser.add_argument('--nonhybrid', action='store_true', help='global preference'
 parser.add_argument('--lr_dc', type=float, default=0.1, help='learning rate decay rate')
 parser.add_argument('--lr_dc_step', type=int, default=3, help='the number of steps after which the learning rate decay')
 parser.add_argument('--tensorboard', action='store_true')
-parser.add_argument('--precision', default="float16", choices=["float16", "float32"])
+parser.add_argument('--precision', default="float16", choices=["float16", "float32", "bfloat16"])
 parser.add_argument('--device', default='cuda', choices=["cuda", "xpu"])
 opt = parser.parse_args()
 train_data = pickle.load(open(opt.dataset + '/train.txt', 'rb'))
